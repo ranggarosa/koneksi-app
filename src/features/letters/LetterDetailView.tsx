@@ -98,6 +98,11 @@ export const LetterDetailView: React.FC = () => {
             <p className="text-sm font-semibold text-indigo-600 mt-0.5">
               Nomor: {letter.letterNumber}
             </p>
+            {letter.contentData.jenisSurat && (
+              <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                {String(letter.contentData.jenisSurat)}
+              </span>
+            )}
           </div>
 
           <div className="space-y-4 text-sm text-slate-700 leading-relaxed min-h-[280px] bg-slate-50/70 p-6 rounded-xl border border-slate-200">

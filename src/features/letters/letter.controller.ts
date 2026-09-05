@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { Letter, CreateLetterDTO, LetterStatus } from './letter.model'
+import type { Letter, LetterStatus, ApproverOption } from './letter.model'
 import { letterService } from './letter.service'
 
 export function useLetterDashboardController() {
@@ -53,24 +53,100 @@ export function useLetterDashboardController() {
 }
 
 export function useCreateLetterController() {
+  const [templateType, setTemplateType] = useState<string>('Surat Tugas')
+  const [jenisSurat, setJenisSurat] = useState<string>('Surat Internal')
+  const department = 'HR'
+  const [reviewerId, setReviewerId] = useState<string>('')
+  const [approverId, setApproverId] = useState<string>('')
+
+  const [formData, setFormData] = useState<Record<string, string>>({
+    recipientName: '',
+    recipientNik: '',
+    position: '',
+    destination: '',
+    purpose: '',
+    startDate: '',
+    endDate: '',
+    violationDate: '',
+    violationReason: '',
+    effectiveDate: '',
+  })
+
+  const [candidates, setCandidates] = useState<{ reviewers: ApproverOption[]; approvers: ApproverOption[] }>({
+    reviewers: [],
+    approvers: [],
+  })
+  const [loadingCandidates, setLoadingCandidates] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const [feedback, setFeedback] = useState<string | null>(null)
 
-  const submitDraft = async (
-    dto: CreateLetterDTO,
+  // Load available reviewers and approvers
+  useEffect(() => {
+    let isMounted = true
+    const loadCandidates = async () => {
+      setLoadingCandidates(true)
+      try {
+        const options = await letterService.getApprovalOptions()
+        if (isMounted) {
+          setCandidates(options)
+          if (options.reviewers.length > 0 && !reviewerId) {
+            setReviewerId(options.reviewers[0].uid)
+          }
+          if (options.approvers.length > 0 && !approverId) {
+            setApproverId(options.approvers[0].uid)
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal memuat kandidat approval:', err)
+      } finally {
+        if (isMounted) setLoadingCandidates(false)
+      }
+    }
+
+    loadCandidates()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleFieldChange = useCallback((field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError(null)
+  }, [])
+
+  const handleTemplateChange = useCallback((newTemplate: string) => {
+    setTemplateType(newTemplate)
+    setError(null)
+  }, [])
+
+  const submitLetterDraft = async (
     drafterId: string,
     drafterName: string
   ): Promise<Letter | null> => {
     setLoading(true)
     setError(null)
-    setSuccess(false)
+    setFeedback(null)
+
     try {
-      const created = await letterService.createLetterDraft(dto, drafterId, drafterName)
-      setSuccess(true)
+      const created = await letterService.createLetterDraft(
+        {
+          templateType,
+          department,
+          jenisSurat,
+          contentData: formData,
+          reviewerId: reviewerId || undefined,
+          approverId,
+        },
+        drafterId,
+        drafterName,
+        candidates
+      )
+
+      setFeedback(`Draf surat "${created.letterNumber}" berhasil disimpan! Mengalihkan ke dashboard...`)
       return created
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal membuat draf surat'
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan draf surat'
       setError(msg)
       return null
     } finally {
@@ -78,11 +154,43 @@ export function useCreateLetterController() {
     }
   }
 
+  const resetForm = useCallback(() => {
+    setFormData({
+      recipientName: '',
+      recipientNik: '',
+      position: '',
+      destination: '',
+      purpose: '',
+      startDate: '',
+      endDate: '',
+      violationDate: '',
+      violationReason: '',
+      effectiveDate: '',
+    })
+    setError(null)
+    setFeedback(null)
+  }, [])
+
   return {
+    templateType,
+    department,
+    jenisSurat,
+    reviewerId,
+    approverId,
+    formData,
+    candidates,
+    loadingCandidates,
     loading,
     error,
-    success,
-    submitDraft,
+    feedback,
+    setJenisSurat,
+    setReviewerId,
+    setApproverId,
+    handleFieldChange,
+    handleTemplateChange,
+    submitLetterDraft,
+    resetForm,
+    clearError: () => setError(null),
   }
 }
 

@@ -1,5 +1,7 @@
 export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected'
 
+export type LetterTemplateType = 'Surat Tugas' | 'SP 1' | 'SP 2'
+
 export interface ApprovalStep {
   userId: string
   userName: string
@@ -31,11 +33,19 @@ export interface Counter {
   currentSequence: number
 }
 
+export interface ApproverOption {
+  uid: string
+  name: string
+  role: string
+  department?: string
+}
+
 export interface CreateLetterDTO {
   templateType: string
-  department: string
+  department?: string
+  jenisSurat?: string
   contentData: Record<string, string | number>
-  reviewerId: string
+  reviewerId?: string
   approverId: string
 }
 

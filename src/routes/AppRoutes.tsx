@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { ProtectedRoute } from './ProtectedRoute'
+import { RoleRoute } from './RoleRoute'
 import { LoginView } from '@/features/auth/LoginView'
 import { LetterDashboardView } from '@/features/letters/LetterDashboardView'
 import { CreateLetterView } from '@/features/letters/CreateLetterView'
@@ -22,7 +23,13 @@ export const AppRoutes: React.FC = () => {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<LetterDashboardView />} />
-          <Route path="/letters/create" element={<CreateLetterView />} />
+
+          {/* Drafter-Only Protected Routes */}
+          <Route element={<RoleRoute allowedRoles={['drafter']} redirectTo="/dashboard" />}>
+            <Route path="/create" element={<CreateLetterView />} />
+            <Route path="/letters/create" element={<CreateLetterView />} />
+          </Route>
+
           <Route path="/letters/:id" element={<LetterDetailView />} />
           <Route path="/settings" element={<SettingsView />} />
         </Route>
