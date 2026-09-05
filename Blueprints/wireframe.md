@@ -30,6 +30,7 @@ Dokumen ini berisi panduan tata letak (layout) dan komponen antarmuka (UI) untuk
 - **Panel Pratinjau:** Kotak (container) yang menampilkan draf teks dokumen atau embed PDF final.
 - **Panel Informasi:**
   - Timeline Status (Jejak persetujuan dari Drafter hingga Approver akhir).
+  - **[BARU] State Loading Asinkron:** Jika dokumen berstatus `Processing PDF` (sedang di-*generate* oleh server Google), hilangkan tombol aksi dan tampilkan animasi *loading spinner* atau pesan "Dokumen sedang diproses oleh server...".
 - **Panel Aksi (Khusus pengguna yang mendapat giliran):**
   - Textarea: Kolom input catatan revisi (opsional).
   - Tombol: "Approve" (Hijau) dan "Reject" (Merah).

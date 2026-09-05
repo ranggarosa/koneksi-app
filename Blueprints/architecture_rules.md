@@ -17,18 +17,26 @@ Kode tidak boleh dicampur dalam satu file. Setiap fitur harus dibagi ke dalam 4 
 4. **Repository/Data Layer (`/repositories`)**
    - **Tugas:** Berkomunikasi langsung dengan database (Firestore / API). Melakukan operasi CRUD (Create, Read, Update, Delete).
    - **Aturan:** Hanya berisi query atau pemanggilan API. Tidak ada logika bisnis di sini.
+5. **[BARU] Cloud Functions Layer (`/functions`):** 
+   - **Tugas:** Menjalankan operasi berat di *backend* (Integrasi Google Docs API, Google Drive API, Injeksi Tanda Tangan).
+   - **Aturan:** Harus dipisahkan dari folder *frontend* (`src/`). Ditulis dalam Node.js, merespons *trigger* dari perubahan Firestore (contoh: `onDocumentUpdated`).
 
 ## 2. Struktur Direktori (Berdasarkan Fitur / Feature-Driven)
 Kelompokkan file berdasarkan fitur agar mudah dicari, bukan berdasarkan layer murni.
 ```text
-src/
- └── features/
-      └── letters/
-           ├── letter.model.ts       (Skema/Tipe Data)
-           ├── letter.repository.ts  (Query ke Firestore)
-           ├── letter.service.ts     (Logika Penomoran/Persetujuan)
-           ├── letter.controller.ts  (Hook/Logic State UI)
-           └── LetterView.tsx        (Komponen React UI)
+project-root/
+ ├── functions/              (Backend - Cloud Functions)
+ │    ├── src/
+ │    │    └── pdf-generator/ (Logika Google Docs API)
+ │    └── package.json
+ └── src/                    (Frontend - React)
+      └── features/
+           └── letters/
+               ├── letter.model.ts       (Skema/Tipe Data)
+               ├── letter.repository.ts  (Query ke Firestore)
+               ├── letter.service.ts     (Logika Penomoran/Persetujuan)
+               ├── letter.controller.ts  (Hook/Logic State UI)
+               └── LetterView.tsx        (Komponen React UI)
 ```
 
 ## 3. Konvensi Penamaan (Naming Conventions)

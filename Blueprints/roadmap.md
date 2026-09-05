@@ -14,8 +14,6 @@ Dokumen ini memandu transisi dari arsitektur *serverless* 100% (MVP) menuju infr
 - **Custom Claims:** Ganti pengecekan role manual di database dengan **Firebase Custom Claims** untuk keamanan otorisasi tingkat token (RBAC).
 - **Deployment:** Alihkan *hosting* ke **Firebase App Hosting** yang lebih optimal untuk Next.js.
 
-## Fase 3: Server-Side PDF & Integrasi Notifikasi Async (Skalabilitas)
-**Tujuan:** Menghapus beban *client* dalam memproduksi dokumen dan mengatur notifikasi yang andal.
-- **Server-Side PDF Render:** Pindahkan tugas pembuatan PDF dari browser (*client-side*) ke **Cloud Functions Gen 2** (menggunakan *Puppeteer/Headless Chrome*). Ini menjamin format presisi tanpa terpengaruh performa perangkat pengguna.
-- **Task Queuing:** Implementasikan **GCP Cloud Tasks** untuk menangani antrean proses latar belakang tanpa batas waktu *(background worker)*.
+## Fase 3: Skalabilitas Antrean (Queuing) & Multi-Channel
+- **Task Queuing:** Karena integrasi Google Docs API memakan waktu komputasi, terapkan **GCP Cloud Tasks** untuk antrean proses *background* agar *timeout* terhindari jika ratusan surat disetujui bersamaan.
 - **Notifikasi Multi-Channel:** Integrasikan *webhook/API* **WhatsApp Gateway** ke dalam Cloud Tasks sebagai pelengkap notifikasi email.

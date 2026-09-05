@@ -15,8 +15,9 @@ Menyimpan isi surat, array urutan persetujuan (reviewer/approver IDs), metadata,
 - `letterId` (String): Document ID (Auto-generated oleh Firestore).
 - `letterNumber` (String): Nomor registrasi surat (contoh: "0051.SP1/VII/2026").
 - `templateType` (String): Kategori surat (contoh: "Surat Tugas", "SP 1").
+- `googleDocTemplateId` (String): **[BARU]** ID dokumen Google Docs yang menjadi master template untuk jenis surat ini.
 - `contentData` (Map/Object): Objek yang berisi variabel data spesifik surat (nama, NIK, tanggal, dll).
-- `status` (String): Status dokumen ("Draft", "In Review", "Approved", "Rejected").
+- `status` (String): Status dokumen ("Draft", "In Review", "Approved", "Rejected", "Canceled", "Booked", **"Processing PDF"** (Status saat Cloud Functions bekerja).).
 - `drafterId` (String): Referensi UID pembuat draf.
 - `approvalFlow` (Array of Objects): Matriks urutan persetujuan.
   - `userId` (String): Referensi UID Reviewer/Approver.
@@ -28,9 +29,8 @@ Menyimpan isi surat, array urutan persetujuan (reviewer/approver IDs), metadata,
 - `updatedAt` (Timestamp): Tanggal dan waktu modifikasi terakhir.
 
 ## 3. Collection: `counters`
-Menyimpan angka urut terakhir per departemen/bulan/tahun untuk digunakan dalam fitur *Firestore Transactions* guna mencegah duplikasi.
-- `counterId` (String): Document ID dengan format spesifik (contoh: "HR_07_2026").
-- `department` (String): Kode departemen (contoh: "HR").
+Menyimpan angka urut terakhir per jenis atau kode surat/bulan/tahun untuk digunakan dalam fitur *Firestore Transactions* guna mencegah duplikasi.
+- `counterId` (String): Document ID dengan format spesifik (contoh: "07_2026").
 - `month` (Number): Bulan berjalan (contoh: 7).
 - `year` (Number): Tahun berjalan (contoh: 2026).
 - `currentSequence` (Number): Angka urut terakhir yang diterbitkan (contoh: 51).
