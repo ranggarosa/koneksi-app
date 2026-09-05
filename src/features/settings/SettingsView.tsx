@@ -1,21 +1,80 @@
-import React, { useState } from 'react'
-import { User, Shield, PenTool, CheckCircle2, AlertCircle } from 'lucide-react'
+import React, { useState, useRef } from 'react'
+import { User, Shield, PenTool, CheckCircle2, AlertCircle, Upload } from 'lucide-react'
 import { useSettingsController } from './settings.controller'
 import { useAuthController } from '@/features/auth/auth.controller'
 import type { UserRole } from '@/features/auth/auth.model'
+import { useToast } from '@/components/common/Toast'
 
 export const SettingsView: React.FC = () => {
   const { user } = useAuthController()
-  const { users, loading, saving, error, successMessage, clearSuccess, updateUserRole, uploadSignature } =
-    useSettingsController()
+  const {
+    users,
+    loading,
+    saving,
+    error,
+    successMessage,
+    clearSuccess,
+    updateUserRole,
+    uploadSignature,
+    uploadSignatureFile,
+  } = useSettingsController()
+  const toast = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<'profile' | 'users'>('profile')
   const [signaturePreview, setSignaturePreview] = useState<string | null>(user?.signatureUrl || null)
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    try {
+      const objectUrl = URL.createObjectURL(file)
+      setSignaturePreview(objectUrl)
+      const uploadedUrl = await uploadSignatureFile(user.uid, file)
+      setSignaturePreview(uploadedUrl)
+      toast.showToast({
+        type: 'success',
+        title: 'Tanda Tangan Diperbarui',
+        message: 'Spesimen tanda tangan digital berhasil diunggah ke storage.',
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengunggah berkas tanda tangan'
+      toast.showToast({
+        type: 'error',
+        title: 'Gagal Mengunggah',
+        message: msg,
+      })
+    }
+  }
 
   const handleSimulateUpload = () => {
     if (!user) return
     const mockSig = 'https://dummyimage.com/300x120/4f46e5/ffffff&text=E-Signature+Hendra'
     setSignaturePreview(mockSig)
     uploadSignature(user.uid, mockSig)
+    toast.showToast({
+      type: 'info',
+      title: 'Simulasi Diperbarui',
+      message: 'Spesimen tanda tangan digital simulasi berhasil diterapkan.',
+    })
+  }
+
+  const handleRoleChange = async (uid: string, role: UserRole, userName: string) => {
+    try {
+      await updateUserRole(uid, role)
+      toast.showToast({
+        type: 'success',
+        title: 'Peran Diperbarui',
+        message: `Peran ${userName} berhasil diubah menjadi ${role}.`,
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memperbarui peran'
+      toast.showToast({
+        type: 'error',
+        title: 'Gagal',
+        message: msg,
+      })
+    }
   }
 
   return (
@@ -113,6 +172,14 @@ export const SettingsView: React.FC = () => {
               Khusus Approver: gambar tanda tangan akan diinjeksi secara otomatis pada lembar PDF final surat yang disetujui.
             </p>
 
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/png,image/jpeg,image/svg+xml"
+              className="hidden"
+            />
+
             <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center bg-slate-50/60">
               {signaturePreview ? (
                 <div className="space-y-3">
@@ -133,14 +200,26 @@ export const SettingsView: React.FC = () => {
               )}
             </div>
 
-            <button
-              type="button"
-              disabled={saving}
-              onClick={handleSimulateUpload}
-              className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl border border-indigo-200 transition"
-            >
-              {saving ? 'Memproses...' : 'Simulasi Unggah / Perbarui Spesimen Tanda Tangan'}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                <span>{saving ? 'Mengunggah...' : 'Unggah Berkas Gambar'}</span>
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSimulateUpload}
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition"
+                title="Gunakan spesimen dummy untuk simulasi"
+              >
+                Simulasi Dummy
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -178,7 +257,7 @@ export const SettingsView: React.FC = () => {
                         <select
                           value={item.role}
                           disabled={saving}
-                          onChange={(e) => updateUserRole(item.uid, e.target.value as UserRole)}
+                          onChange={(e) => handleRoleChange(item.uid, e.target.value as UserRole, item.name)}
                           className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 capitalize"
                         >
                           <option value="drafter">Drafter</option>

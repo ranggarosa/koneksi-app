@@ -1,7 +1,7 @@
 import * as logger from 'firebase-functions/logger'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
-import { getGoogleWorkspaceClients } from '../google-client'
+import { getGoogleWorkspaceClients } from './google-client'
 
 export interface GeneratePdfOptions {
   letterId: string
