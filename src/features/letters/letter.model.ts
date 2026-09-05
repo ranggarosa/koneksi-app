@@ -1,4 +1,4 @@
-export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected'
+export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected' | 'Booked' | 'Canceled'
 
 export type LetterTemplateType = 'Surat Tugas' | 'SP 1' | 'SP 2'
 
@@ -66,4 +66,20 @@ export interface LetterFilter {
   status?: LetterStatus
   templateType?: string
   search?: string
+}
+
+export interface BookLetterNumberDTO {
+  templateType: string
+  issuedDate: string
+  purpose: string
+}
+
+export interface BookedLetterResult {
+  letterId: string
+  letterNumber: string
+  templateType: string
+  purpose: string
+  issuedDate: string
+  bookedBy: string
+  createdAt: string
 }

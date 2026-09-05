@@ -2,7 +2,7 @@ import type { ILetterRepository } from './letter.repository'
 import { letterRepository } from './letter.repository'
 import type { ICounterRepository } from './counter.repository'
 import { counterRepository } from './counter.repository'
-import type { Letter, LetterStatus, CreateLetterDTO, ApproverOption } from './letter.model'
+import type { Letter, LetterStatus, CreateLetterDTO, ApproverOption, BookLetterNumberDTO } from './letter.model'
 import { LETTER_TEMPLATES } from './letter.model'
 
 const ROMAN_MONTHS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
@@ -198,6 +198,60 @@ export class LetterService {
     })
   }
 
+  validateBookingPayload(dto: BookLetterNumberDTO): void {
+    if (!dto.templateType || String(dto.templateType).trim() === '') {
+      throw new Error('Kategori / Jenis surat wajib dipilih')
+    }
+
+    if (!dto.purpose || String(dto.purpose).trim() === '') {
+      throw new Error('Deskripsi atau keperluan surat wajib diisi')
+    }
+
+    if (!dto.issuedDate || String(dto.issuedDate).trim() === '') {
+      throw new Error('Tanggal penerbitan surat wajib diisi')
+    }
+  }
+
+  async bookLetterNumber(
+    dto: BookLetterNumberDTO,
+    userId: string,
+    userName: string
+  ): Promise<Letter> {
+    this.validateBookingPayload(dto)
+
+    const issuedDateObj = new Date(dto.issuedDate)
+    const validDate = isNaN(issuedDateObj.getTime()) ? new Date() : issuedDateObj
+    const month = validDate.getMonth() + 1
+    const year = validDate.getFullYear()
+    const dept = 'HR'
+
+    const templateConfig = LETTER_TEMPLATES[dto.templateType]
+    const letterCode = templateConfig ? templateConfig.code : 'LTR'
+
+    // Ambil sequence atomic dari counter repository
+    const nextSequence = await this.counterRepo.getNextSequenceNumber(dept, month, year)
+    const letterNumber = this.formatLetterNumber(nextSequence, letterCode, validDate)
+    const nowIso = new Date().toISOString()
+
+    const bookedLetterData: Omit<Letter, 'letterId'> = {
+      letterNumber,
+      templateType: dto.templateType,
+      contentData: {
+        purpose: dto.purpose,
+        issuedDate: dto.issuedDate,
+        isStandaloneBooking: 'true',
+      },
+      status: 'Booked',
+      drafterId: userId,
+      drafterName: userName,
+      approvalFlow: [],
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    }
+
+    return this.repo.create(bookedLetterData)
+  }
+
   calculateMetrics(letters: Letter[]) {
     return {
       total: letters.length,
@@ -205,6 +259,7 @@ export class LetterService {
       inReviewCount: letters.filter((l) => l.status === 'In Review').length,
       approvedCount: letters.filter((l) => l.status === 'Approved').length,
       rejectedCount: letters.filter((l) => l.status === 'Rejected').length,
+      bookedCount: letters.filter((l) => l.status === 'Booked').length,
     }
   }
 }
