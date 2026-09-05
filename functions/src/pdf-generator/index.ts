@@ -87,12 +87,12 @@ export async function generatePdfFromGoogleDoc(options: GeneratePdfOptions): Pro
     if (clients.isMockMode) {
       logger.info(`[MOCK MODE] Simulating Google Workspace PDF generation for ${letterId}`)
       const destination = `final_letters/${letterId}.pdf`
-      const bucketName = process.env.STORAGE_BUCKET_NAME || 'koneksi-app-dev.appspot.com'
+      const bucketName = process.env.VITE_FIREBASE_STORAGE_BUCKET || 'koneksi-app-dev.appspot.com'
       const mockPdfUrl = `https://storage.googleapis.com/${bucketName}/${destination}`
 
       // Attempt to save mock PDF buffer to Storage if bucket exists
       try {
-        const bucket = getStorage().bucket(process.env.STORAGE_BUCKET_NAME || undefined)
+        const bucket = getStorage().bucket(process.env.VITE_FIREBASE_STORAGE_BUCKET || undefined)
         const file = bucket.file(destination)
         const mockPdfContent = Buffer.from(
           `%PDF-1.4\n% Mock PDF for Letter ${letterNumber} (ID: ${letterId})\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 595 842]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000060 00000 n \n0000000115 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n215\n%%EOF`
@@ -290,7 +290,7 @@ export async function generatePdfFromGoogleDoc(options: GeneratePdfOptions): Pro
     const pdfBuffer = Buffer.from(exportResponse.data as ArrayBuffer)
     logger.info(`PDF exported successfully, size: ${pdfBuffer.length} bytes`)
 
-    const bucket = getStorage().bucket(process.env.STORAGE_BUCKET_NAME || undefined)
+    const bucket = getStorage().bucket(process.env.VITE_FIREBASE_STORAGE_BUCKET || undefined)
     const destination = `final_letters/${letterId}.pdf`
     const file = bucket.file(destination)
 
