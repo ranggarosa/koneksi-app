@@ -59,6 +59,23 @@ export function useSettingsController() {
     }
   }
 
+  const uploadSignatureFile = async (uid: string, file: File): Promise<string> => {
+    setSaving(true)
+    setError(null)
+    setSuccessMessage(null)
+    try {
+      const res = await settingsService.uploadAndSaveSignature(uid, file)
+      setSuccessMessage('Berkas tanda tangan berhasil diunggah dan diperbarui')
+      return res.signatureUrl || ''
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengunggah berkas tanda tangan'
+      setError(msg)
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return {
     users,
     loading,
@@ -68,6 +85,7 @@ export function useSettingsController() {
     clearSuccess: () => setSuccessMessage(null),
     updateUserRole,
     uploadSignature,
+    uploadSignatureFile,
     refresh: fetchUsers,
   }
 }
