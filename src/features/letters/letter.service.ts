@@ -111,6 +111,7 @@ export class LetterService {
     // Ambil KODE_SURAT dari konfigurasi Template surat yang dipilih
     const templateConfig = LETTER_TEMPLATES[dto.templateType]
     const letterCode = templateConfig ? templateConfig.code : 'LTR'
+    const googleDocTemplateId = dto.googleDocTemplateId || templateConfig?.googleDocTemplateId
 
     // Ambil nomor urut atomic dari Firestore Transactions
     const nextSequence = await this.counterRepo.getNextSequenceNumber(dept, month, year)
@@ -143,6 +144,7 @@ export class LetterService {
     const newLetterData: Omit<Letter, 'letterId'> = {
       letterNumber,
       templateType: dto.templateType,
+      googleDocTemplateId,
       contentData: {
         ...dto.contentData,
         jenisSurat: dto.jenisSurat || dto.contentData.jenisSurat || 'Surat Internal',
@@ -234,8 +236,9 @@ export class LetterService {
           letter.templateType
         )
       } else {
-        nextStatus = 'Approved'
-        // Notifikasi kelulusan otorisasi ke Drafter
+        // Seluruh approver telah menyetujui -> Status dialihkan ke 'Processing PDF'
+        // agar Cloud Functions mengeksekusi Google Docs API & Google Drive API
+        nextStatus = 'Processing PDF'
         await this.notificationService.notifyApprovalComplete(
           { name: letter.drafterName },
           letter.letterNumber,
@@ -247,10 +250,6 @@ export class LetterService {
     return this.repo.update(letterId, {
       approvalFlow: flow,
       status: nextStatus,
-      finalPdfUrl:
-        nextStatus === 'Approved'
-          ? `https://storage.koneksi.app/letters/${letter.letterNumber.replace(/\//g, '-')}.pdf`
-          : undefined,
     })
   }
 
@@ -316,6 +315,7 @@ export class LetterService {
       approvedCount: letters.filter((l) => l.status === 'Approved').length,
       rejectedCount: letters.filter((l) => l.status === 'Rejected').length,
       bookedCount: letters.filter((l) => l.status === 'Booked').length,
+      processingPdfCount: letters.filter((l) => l.status === 'Processing PDF').length,
     }
   }
 }

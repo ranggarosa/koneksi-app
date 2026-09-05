@@ -319,6 +319,14 @@ export const LetterDetailView: React.FC = () => {
                     </div>
                     <p className="mt-1 text-[11px] text-slate-400">Persetujuan Lengkap & Sah</p>
                   </div>
+                ) : letter.status === 'Processing PDF' ? (
+                  <div className="text-left sm:text-right">
+                    <div className="inline-flex items-center gap-1.5 border border-indigo-300 bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-lg tracking-wider uppercase text-[10px]">
+                      <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+                      <span>Processing PDF Engine</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">Google Docs API Generating...</p>
+                  </div>
                 ) : letter.status === 'Rejected' ? (
                   <div className="text-left sm:text-right">
                     <div className="inline-flex items-center gap-1.5 border border-rose-300 bg-rose-50 text-rose-700 font-bold px-3 py-1 rounded-lg tracking-wider uppercase text-[10px]">
@@ -437,6 +445,20 @@ export const LetterDetailView: React.FC = () => {
                 <p className="text-emerald-700">
                   Seluruh tahapan persetujuan telah dipenuhi. Dokumen ini sah secara digital.
                 </p>
+              </div>
+            ) : letter.status === 'Processing PDF' ? (
+              <div className="p-5 bg-gradient-to-br from-indigo-50 via-blue-50 to-indigo-50 rounded-2xl border border-indigo-200 text-center space-y-3 shadow-xs animate-in fade-in duration-300">
+                <div className="w-9 h-9 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto text-indigo-600" />
+                <div>
+                  <p className="font-bold text-slate-900 text-xs">Dokumen Sedang Diproses Server</p>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Persetujuan telah lengkap. Google Workspace PDF Engine di Cloud Functions sedang menyalin master template Google Docs, menginjeksi data dan tanda tangan, lalu mengekspor PDF resmi...
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold bg-white text-indigo-700 border border-indigo-200 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping" />
+                  <span>Menunggu proses render asinkron</span>
+                </div>
               </div>
             ) : letter.status === 'Rejected' ? (
               <div className="p-4 bg-rose-50 rounded-xl border border-rose-200 text-rose-800 text-xs font-medium space-y-1">

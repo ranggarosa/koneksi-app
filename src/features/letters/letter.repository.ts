@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  onSnapshot,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/config/firebase'
 import type { Letter, Counter, ApproverOption } from './letter.model'
@@ -12,6 +13,7 @@ import type { Letter, Counter, ApproverOption } from './letter.model'
 export interface ILetterRepository {
   findAll(): Promise<Letter[]>
   findById(id: string): Promise<Letter | null>
+  subscribeById(id: string, callback: (letter: Letter | null) => void): () => void
   create(letter: Omit<Letter, 'letterId'>): Promise<Letter>
   update(id: string, partial: Partial<Letter>): Promise<Letter>
   getNextSequence(department: string, month: number, year: number): Promise<number>
@@ -219,6 +221,52 @@ class LetterRepository implements ILetterRepository {
     await new Promise((resolve) => setTimeout(resolve, 150))
     const item = this.inMemoryLetters.find((l) => l.letterId === id)
     return item ? { ...item } : null
+  }
+
+  subscribeById(id: string, callback: (letter: Letter | null) => void): () => void {
+    if (isFirebaseConfigured) {
+      try {
+        const docRef = doc(db, 'letters', id)
+        const unsubscribe = onSnapshot(
+          docRef,
+          (snap) => {
+            if (snap.exists()) {
+              const data = snap.data()
+              const letter: Letter = {
+                letterId: snap.id,
+                letterNumber: data.letterNumber || `DRAFT-${snap.id.slice(0, 5)}`,
+                templateType: data.templateType || 'Surat',
+                googleDocTemplateId: data.googleDocTemplateId,
+                contentData: data.contentData || {},
+                status: data.status || 'Draft',
+                drafterId: data.drafterId || '',
+                drafterName: data.drafterName || 'Drafter',
+                approvalFlow: data.approvalFlow || [],
+                finalPdfUrl: data.finalPdfUrl,
+                createdAt: data.createdAt || new Date().toISOString(),
+                updatedAt: data.updatedAt || new Date().toISOString(),
+              }
+              callback(letter)
+            } else {
+              callback(null)
+            }
+          },
+          (err) => {
+            console.warn('Error onSnapshot Firestore listener:', err)
+            this.findById(id).then(callback)
+          }
+        )
+        return unsubscribe
+      } catch (err) {
+        console.warn('Gagal setup onSnapshot listener:', err)
+      }
+    }
+
+    this.findById(id).then(callback)
+    const interval = setInterval(() => {
+      this.findById(id).then(callback)
+    }, 1500)
+    return () => clearInterval(interval)
   }
 
   async update(id: string, partial: Partial<Letter>): Promise<Letter> {

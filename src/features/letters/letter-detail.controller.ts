@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import type { Letter } from './letter.model'
 import { letterService } from './letter.service'
+import { letterRepository } from './letter.repository'
 
 export function useLetterDetailController(letterId?: string) {
   const [letter, setLetter] = useState<Letter | null>(null)
@@ -9,24 +10,25 @@ export function useLetterDetailController(letterId?: string) {
   const [error, setError] = useState<string | null>(null)
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
 
-  const fetchDetail = useCallback(async () => {
-    if (!letterId) return
+  useEffect(() => {
+    if (!letterId) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
-    try {
-      const data = await letterService.getLetterById(letterId)
+
+    // Real-time Firestore listener (onSnapshot)
+    const unsubscribe = letterRepository.subscribeById(letterId, (data) => {
       setLetter(data)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal memuat detail surat'
-      setError(msg)
-    } finally {
       setLoading(false)
+    })
+
+    return () => {
+      if (unsubscribe) unsubscribe()
     }
   }, [letterId])
-
-  useEffect(() => {
-    fetchDetail()
-  }, [fetchDetail])
 
   const handleAction = async (
     userId: string,
@@ -41,7 +43,9 @@ export function useLetterDetailController(letterId?: string) {
       setLetter(updated)
       setFeedbackMsg(
         action === 'approve'
-          ? 'Keputusan berhasil disimpan: Dokumen telah disetujui.'
+          ? updated.status === 'Processing PDF'
+            ? 'Persetujuan tersimpan! Server sedang merender PDF dokumen via Google Workspace APIs.'
+            : 'Keputusan berhasil disimpan: Dokumen telah disetujui.'
           : 'Keputusan berhasil disimpan: Dokumen telah ditolak dengan catatan evaluasi.'
       )
       return true
@@ -56,6 +60,12 @@ export function useLetterDetailController(letterId?: string) {
 
   const clearFeedback = () => setFeedbackMsg(null)
 
+  const refresh = async () => {
+    if (!letterId) return
+    const data = await letterRepository.findById(letterId)
+    setLetter(data)
+  }
+
   return {
     letter,
     loading,
@@ -64,7 +74,7 @@ export function useLetterDetailController(letterId?: string) {
     feedbackMsg,
     setFeedbackMsg,
     clearFeedback,
-    refresh: fetchDetail,
+    refresh,
     handleAction,
   }
 }
