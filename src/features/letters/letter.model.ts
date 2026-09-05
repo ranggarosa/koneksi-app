@@ -2,6 +2,18 @@ export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected'
 
 export type LetterTemplateType = 'Surat Tugas' | 'SP 1' | 'SP 2'
 
+export interface LetterTemplateConfig {
+  type: string
+  code: string // KODE_SURAT (misal: ST, SP1, SP2)
+  label: string
+}
+
+export const LETTER_TEMPLATES: Record<string, LetterTemplateConfig> = {
+  'Surat Tugas': { type: 'Surat Tugas', code: 'ST', label: 'Surat Tugas' },
+  'SP 1': { type: 'SP 1', code: 'SP1', label: 'Surat Peringatan 1 (SP 1)' },
+  'SP 2': { type: 'SP 2', code: 'SP2', label: 'Surat Peringatan 2 (SP 2)' },
+}
+
 export interface ApprovalStep {
   userId: string
   userName: string
@@ -31,6 +43,7 @@ export interface Counter {
   month: number
   year: number
   currentSequence: number
+  updatedAt?: string
 }
 
 export interface ApproverOption {
