@@ -8,6 +8,7 @@ import { LoginView } from '@/features/auth/LoginView'
 import { LetterDashboardView } from '@/features/letters/LetterDashboardView'
 import { CreateLetterView } from '@/features/letters/CreateLetterView'
 import { LetterDetailView } from '@/features/letters/LetterDetailView'
+import { StandaloneNumberGeneratorView } from '@/features/letters/StandaloneNumberGeneratorView'
 import { SettingsView } from '@/features/settings/SettingsView'
 
 export const AppRoutes: React.FC = () => {
@@ -28,6 +29,8 @@ export const AppRoutes: React.FC = () => {
           <Route element={<RoleRoute allowedRoles={['drafter']} redirectTo="/dashboard" />}>
             <Route path="/create" element={<CreateLetterView />} />
             <Route path="/letters/create" element={<CreateLetterView />} />
+            <Route path="/letters/standalone-number" element={<StandaloneNumberGeneratorView />} />
+            <Route path="/letters/book-number" element={<StandaloneNumberGeneratorView />} />
           </Route>
 
           <Route path="/letters/:id" element={<LetterDetailView />} />

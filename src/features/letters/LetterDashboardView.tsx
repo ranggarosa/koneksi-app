@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, FileText, Clock, CheckCircle2, AlertCircle, Eye } from 'lucide-react'
+import { Plus, Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Hash } from 'lucide-react'
 import { useLetterDashboardController } from './letter.controller'
 import { useAuthController } from '@/features/auth/auth.controller'
 import { Badge } from '@/components/common/Badge'
@@ -32,14 +32,24 @@ export const LetterDashboardView: React.FC = () => {
         </div>
 
         {canCreateLetter && (
-          <button
-            type="button"
-            onClick={() => navigate('/letters/create')}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Buat Surat Baru</span>
-          </button>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => navigate('/letters/standalone-number')}
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl border border-slate-300 shadow-xs transition"
+            >
+              <Hash className="w-4 h-4 text-blue-600" />
+              <span>Ambil Nomor Surat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/letters/create')}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Buat Surat Baru</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -102,7 +112,7 @@ export const LetterDashboardView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {(['All', 'Draft', 'In Review', 'Approved', 'Rejected'] as (LetterStatus | 'All')[]).map((status) => (
+            {(['All', 'Draft', 'In Review', 'Approved', 'Rejected', 'Booked', 'Canceled'] as (LetterStatus | 'All')[]).map((status) => (
               <button
                 key={status}
                 type="button"

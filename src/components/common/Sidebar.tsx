@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, FilePlus2, Settings, FileText, UserCircle } from 'lucide-react'
+import { LayoutDashboard, FilePlus2, Settings, FileText, UserCircle, Hash } from 'lucide-react'
 import { useAuthController } from '@/features/auth/auth.controller'
 
 export const Sidebar: React.FC = () => {
@@ -17,6 +17,12 @@ export const Sidebar: React.FC = () => {
       label: 'Buat Surat',
       path: '/letters/create',
       icon: FilePlus2,
+      show: canCreateLetter,
+    },
+    {
+      label: 'Ambil Nomor',
+      path: '/letters/standalone-number',
+      icon: Hash,
       show: canCreateLetter,
     },
     {

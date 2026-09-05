@@ -40,6 +40,22 @@ export const Badge: React.FC<BadgeProps> = ({ status }) => {
     )
   }
 
+  if (normalized === 'booked') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-300">
+        Booked
+      </span>
+    )
+  }
+
+  if (normalized === 'canceled') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-300 line-through">
+        Canceled
+      </span>
+    )
+  }
+
   return (
     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
       {status}
