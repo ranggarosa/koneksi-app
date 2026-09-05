@@ -12,6 +12,7 @@ import {
   User,
   ShieldCheck,
   Hash,
+  RotateCw,
 } from 'lucide-react'
 import { useLetterDetailController } from './letter-detail.controller'
 import { useAuthController } from '@/features/auth/auth.controller'
@@ -29,6 +30,7 @@ export const LetterDetailView: React.FC = () => {
     feedbackMsg,
     clearFeedback,
     handleAction,
+    handleRetryPdf,
   } = useLetterDetailController(id)
 
   const [notes, setNotes] = useState('')
@@ -327,6 +329,14 @@ export const LetterDetailView: React.FC = () => {
                     </div>
                     <p className="mt-1 text-[11px] text-slate-400">Google Docs API Generating...</p>
                   </div>
+                ) : letter.status === 'Error PDF' ? (
+                  <div className="text-left sm:text-right">
+                    <div className="inline-flex items-center gap-1.5 border border-rose-300 bg-rose-50 text-rose-700 font-bold px-3 py-1 rounded-lg tracking-wider uppercase text-[10px]">
+                      <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Gagal Render PDF</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-rose-500">Perlu diproses ulang</p>
+                  </div>
                 ) : letter.status === 'Rejected' ? (
                   <div className="text-left sm:text-right">
                     <div className="inline-flex items-center gap-1.5 border border-rose-300 bg-rose-50 text-rose-700 font-bold px-3 py-1 rounded-lg tracking-wider uppercase text-[10px]">
@@ -459,6 +469,31 @@ export const LetterDetailView: React.FC = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping" />
                   <span>Menunggu proses render asinkron</span>
                 </div>
+              </div>
+            ) : letter.status === 'Error PDF' ? (
+              <div className="p-5 bg-rose-50/90 rounded-2xl border border-rose-200 space-y-3 animate-in fade-in duration-300">
+                <div className="flex items-start gap-3">
+                  <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-rose-900 text-xs">Gagal Merender PDF di Server</p>
+                    <p className="text-[11px] text-rose-700 mt-1 leading-relaxed">
+                      {letter.pdfError || 'Terjadi gangguan koneksi atau kegagalan pemrosesan Google Workspace API di server.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={handleRetryPdf}
+                  className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
+                >
+                  {actionLoading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <RotateCw className="w-3.5 h-3.5" />
+                  )}
+                  <span>Coba Lagi Render PDF</span>
+                </button>
               </div>
             ) : letter.status === 'Rejected' ? (
               <div className="p-4 bg-rose-50 rounded-xl border border-rose-200 text-rose-800 text-xs font-medium space-y-1">

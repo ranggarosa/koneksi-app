@@ -58,6 +58,24 @@ export function useLetterDetailController(letterId?: string) {
     }
   }
 
+  const handleRetryPdf = async (): Promise<boolean> => {
+    if (!letterId) return false
+    setActionLoading(true)
+    setError(null)
+    try {
+      const updated = await letterService.retryPdfProcessing(letterId)
+      setLetter(updated)
+      setFeedbackMsg('Pemicu proses ulang PDF berhasil dikirim ke server!')
+      return true
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memicu proses ulang PDF'
+      setError(msg)
+      return false
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const clearFeedback = () => setFeedbackMsg(null)
 
   const refresh = async () => {
@@ -76,5 +94,6 @@ export function useLetterDetailController(letterId?: string) {
     clearFeedback,
     refresh,
     handleAction,
+    handleRetryPdf,
   }
 }

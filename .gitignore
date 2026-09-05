@@ -14,6 +14,7 @@ dist-ssr
 *.tsbuildinfo
 .vite
 functions/lib
+scratch
 
 # Editor directories and files
 .vscode/*

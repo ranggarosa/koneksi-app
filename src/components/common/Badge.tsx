@@ -65,6 +65,15 @@ export const Badge: React.FC<BadgeProps> = ({ status }) => {
     )
   }
 
+  if (normalized === 'error_pdf' || normalized === 'error pdf') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+        Error PDF
+      </span>
+    )
+  }
+
   return (
     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
       {status}
