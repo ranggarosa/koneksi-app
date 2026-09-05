@@ -1,60 +1,90 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { User, UserRole, AuthState } from './auth.model'
+import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import type { User, UserRole } from './auth.model'
 import { authService } from './auth.service'
 
-export function useAuthController() {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    loading: true,
-    error: null,
-  })
+interface AuthContextValue {
+  user: User | null
+  loading: boolean
+  error: string | null
+  handleGoogleLogin: (preferredRole?: UserRole) => Promise<User | null>
+  handleLogout: () => Promise<void>
+  clearError: () => void
+  canCreateLetter: boolean
+  canApproveLetter: boolean
+}
 
-  const loadUser = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }))
-    try {
-      const user = await authService.getCurrentUser()
-      setState({ user, loading: false, error: null })
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Gagal memuat pengguna'
-      setState({ user: null, loading: false, error: message })
+const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Listen to Firebase Auth state changes
+    const unsubscribe = authService.subscribeToAuthState((currentUser) => {
+      setUser(currentUser)
+      setLoading(false)
+    })
+
+    return () => {
+      unsubscribe()
     }
   }, [])
 
-  useEffect(() => {
-    loadUser()
-  }, [loadUser])
-
-  const handleGoogleLogin = async (preferredRole: UserRole = 'drafter'): Promise<User | null> => {
-    setState((prev) => ({ ...prev, loading: true, error: null }))
+  const handleGoogleLogin = useCallback(async (preferredRole?: UserRole): Promise<User | null> => {
+    setLoading(true)
+    setError(null)
     try {
-      const user = await authService.loginWithGoogle(preferredRole)
-      setState({ user, loading: false, error: null })
-      return user
+      const loggedInUser = await authService.loginWithGoogle(preferredRole)
+      setUser(loggedInUser)
+      return loggedInUser
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login gagal'
-      setState((prev) => ({ ...prev, loading: false, error: message }))
+      setError(message)
       return null
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [])
 
-  const handleLogout = async (): Promise<void> => {
-    setState((prev) => ({ ...prev, loading: true }))
+  const handleLogout = useCallback(async (): Promise<void> => {
+    setLoading(true)
     try {
       await authService.logout()
-      setState({ user: null, loading: false, error: null })
+      setUser(null)
+      setError(null)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Logout gagal'
-      setState((prev) => ({ ...prev, loading: false, error: message }))
+      setError(message)
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [])
 
-  return {
-    user: state.user,
-    loading: state.loading,
-    error: state.error,
+  const clearError = useCallback(() => setError(null), [])
+
+  const value: AuthContextValue = {
+    user,
+    loading,
+    error,
     handleGoogleLogin,
     handleLogout,
-    canCreateLetter: authService.canCreateLetter(state.user),
-    canApproveLetter: authService.canApproveLetter(state.user),
+    clearError,
+    canCreateLetter: authService.canCreateLetter(user),
+    canApproveLetter: authService.canApproveLetter(user),
   }
+
+  return React.createElement(AuthContext.Provider, { value }, children)
 }
+
+export function useAuthController(): AuthContextValue {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuthController harus digunakan di dalam AuthProvider')
+  }
+  return context
+}
+
+// Alias for convenience
+export const useAuth = useAuthController
