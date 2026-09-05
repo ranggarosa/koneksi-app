@@ -91,7 +91,7 @@ export class LetterService {
 
     const now = new Date()
     const nowIso = now.toISOString()
-    const dept = dto.department || 'HR'
+    const dept = 'HR'
 
     // Format draft identifier
     const templateCode = dto.templateType === 'Surat Tugas'
@@ -128,7 +128,10 @@ export class LetterService {
     const newLetterData: Omit<Letter, 'letterId'> = {
       letterNumber: draftNumber,
       templateType: dto.templateType,
-      contentData: dto.contentData,
+      contentData: {
+        ...dto.contentData,
+        jenisSurat: dto.jenisSurat || dto.contentData.jenisSurat || 'Surat Internal',
+      },
       status: 'In Review',
       drafterId,
       drafterName,

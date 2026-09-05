@@ -9,7 +9,7 @@ export const CreateLetterView: React.FC = () => {
   const { user } = useAuthController()
   const {
     templateType,
-    department,
+    jenisSurat,
     reviewerId,
     approverId,
     formData,
@@ -18,7 +18,7 @@ export const CreateLetterView: React.FC = () => {
     loading,
     error,
     feedback,
-    setDepartment,
+    setJenisSurat,
     setReviewerId,
     setApproverId,
     handleFieldChange,
@@ -101,17 +101,16 @@ export const CreateLetterView: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                Departemen Penerbit <span className="text-rose-500">*</span>
+                Jenis Surat <span className="text-rose-500">*</span>
               </label>
               <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
+                value={jenisSurat}
+                onChange={(e) => setJenisSurat(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
               >
-                <option value="HR">Human Resources (HR)</option>
-                <option value="OPS">Operations (OPS)</option>
-                <option value="FIN">Finance & Accounting (FIN)</option>
-                <option value="IT">Information Technology (IT)</option>
+                <option value="Surat Internal">Surat Internal</option>
+                <option value="Surat Eksternal">Surat Eksternal</option>
+                <option value="Surat Rahasia / Konfidensial">Surat Rahasia / Konfidensial</option>
               </select>
             </div>
           </div>

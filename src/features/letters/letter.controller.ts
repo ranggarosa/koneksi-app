@@ -54,7 +54,8 @@ export function useLetterDashboardController() {
 
 export function useCreateLetterController() {
   const [templateType, setTemplateType] = useState<string>('Surat Tugas')
-  const [department, setDepartment] = useState<string>('HR')
+  const [jenisSurat, setJenisSurat] = useState<string>('Surat Internal')
+  const department = 'HR'
   const [reviewerId, setReviewerId] = useState<string>('')
   const [approverId, setApproverId] = useState<string>('')
 
@@ -132,6 +133,7 @@ export function useCreateLetterController() {
         {
           templateType,
           department,
+          jenisSurat,
           contentData: formData,
           reviewerId: reviewerId || undefined,
           approverId,
@@ -172,6 +174,7 @@ export function useCreateLetterController() {
   return {
     templateType,
     department,
+    jenisSurat,
     reviewerId,
     approverId,
     formData,
@@ -180,7 +183,7 @@ export function useCreateLetterController() {
     loading,
     error,
     feedback,
-    setDepartment,
+    setJenisSurat,
     setReviewerId,
     setApproverId,
     handleFieldChange,

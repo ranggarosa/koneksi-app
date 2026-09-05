@@ -42,7 +42,8 @@ export interface ApproverOption {
 
 export interface CreateLetterDTO {
   templateType: string
-  department: string
+  department?: string
+  jenisSurat?: string
   contentData: Record<string, string | number>
   reviewerId?: string
   approverId: string
