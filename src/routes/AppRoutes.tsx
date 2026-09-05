@@ -34,6 +34,7 @@ export const AppRoutes: React.FC = () => {
           </Route>
 
           <Route path="/letters/:id" element={<LetterDetailView />} />
+          <Route path="/letter/:id" element={<LetterDetailView />} />
           <Route path="/settings" element={<SettingsView />} />
         </Route>
       </Route>
