@@ -7,6 +7,8 @@ export interface User {
   role: UserRole
   signatureUrl?: string
   avatarUrl?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface AuthState {
