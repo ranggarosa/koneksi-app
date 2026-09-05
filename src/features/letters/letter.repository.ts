@@ -1,4 +1,13 @@
-import type { Letter, Counter } from './letter.model'
+import {
+  collection,
+  addDoc,
+  doc,
+  getDoc,
+  getDocs,
+  updateDoc,
+} from 'firebase/firestore'
+import { db, isFirebaseConfigured } from '@/config/firebase'
+import type { Letter, Counter, ApproverOption } from './letter.model'
 
 export interface ILetterRepository {
   findAll(): Promise<Letter[]>
@@ -6,10 +15,11 @@ export interface ILetterRepository {
   create(letter: Omit<Letter, 'letterId'>): Promise<Letter>
   update(id: string, partial: Partial<Letter>): Promise<Letter>
   getNextSequence(department: string, month: number, year: number): Promise<number>
+  getApprovalCandidates(): Promise<{ reviewers: ApproverOption[]; approvers: ApproverOption[] }>
 }
 
 class LetterRepository implements ILetterRepository {
-  private letters: Letter[] = [
+  private inMemoryLetters: Letter[] = [
     {
       letterId: 'ltr_001',
       letterNumber: '0051.ST/HR/IX/2026',
@@ -48,7 +58,7 @@ class LetterRepository implements ILetterRepository {
     {
       letterId: 'ltr_002',
       letterNumber: '0052.SP1/HR/IX/2026',
-      templateType: 'Surat Peringatan 1',
+      templateType: 'SP 1',
       contentData: {
         recipientName: 'Rian Pratama',
         recipientNik: '19920115004',
@@ -77,13 +87,13 @@ class LetterRepository implements ILetterRepository {
     },
     {
       letterId: 'ltr_003',
-      letterNumber: '0053.SKK/HR/IX/2026',
-      templateType: 'Surat Keterangan Kerja',
+      letterNumber: '0053.SP2/HR/IX/2026',
+      templateType: 'SP 2',
       contentData: {
         recipientName: 'Dewi Lestari',
         recipientNik: '19950720008',
-        position: 'Senior UI Designer',
-        joinDate: '2022-03-01',
+        violation: 'Tidak mencapai target SOP setelah peringatan pertama',
+        effectiveDate: '2026-09-05',
       },
       status: 'Draft',
       drafterId: 'usr_001',
@@ -117,39 +127,126 @@ class LetterRepository implements ILetterRepository {
     },
   }
 
-  async findAll(): Promise<Letter[]> {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    return [...this.letters]
-  }
-
-  async findById(id: string): Promise<Letter | null> {
-    await new Promise((resolve) => setTimeout(resolve, 150))
-    const item = this.letters.find((l) => l.letterId === id)
-    return item ? { ...item } : null
-  }
-
   async create(letterData: Omit<Letter, 'letterId'>): Promise<Letter> {
+    if (isFirebaseConfigured) {
+      try {
+        const lettersCol = collection(db, 'letters')
+        const docRef = await addDoc(lettersCol, {
+          ...letterData,
+          createdAt: letterData.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+
+        const created: Letter = {
+          letterId: docRef.id,
+          ...letterData,
+        }
+        return created
+      } catch (err) {
+        console.warn('Gagal menyimpan ke Firestore, beralih ke local fallback:', err)
+      }
+    }
+
+    // In-memory fallback
     await new Promise((resolve) => setTimeout(resolve, 250))
     const newLetter: Letter = {
       ...letterData,
       letterId: `ltr_${Date.now()}`,
     }
-    this.letters.unshift(newLetter)
+    this.inMemoryLetters.unshift(newLetter)
     return newLetter
   }
 
-  async update(id: string, partial: Partial<Letter>): Promise<Letter> {
+  async findAll(): Promise<Letter[]> {
+    if (isFirebaseConfigured) {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'letters'))
+        if (!querySnapshot.empty) {
+          const items: Letter[] = []
+          querySnapshot.forEach((d) => {
+            const data = d.data()
+            items.push({
+              letterId: d.id,
+              letterNumber: data.letterNumber || `DRAFT-${d.id.slice(0, 5)}`,
+              templateType: data.templateType || 'Surat',
+              contentData: data.contentData || {},
+              status: data.status || 'Draft',
+              drafterId: data.drafterId || '',
+              drafterName: data.drafterName || 'Drafter',
+              approvalFlow: data.approvalFlow || [],
+              finalPdfUrl: data.finalPdfUrl,
+              createdAt: data.createdAt || new Date().toISOString(),
+              updatedAt: data.updatedAt || new Date().toISOString(),
+            })
+          })
+          return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        }
+      } catch (err) {
+        console.warn('Gagal membaca koleksi letters dari Firestore:', err)
+      }
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 200))
-    const index = this.letters.findIndex((l) => l.letterId === id)
+    return [...this.inMemoryLetters]
+  }
+
+  async findById(id: string): Promise<Letter | null> {
+    if (isFirebaseConfigured) {
+      try {
+        const docRef = doc(db, 'letters', id)
+        const snap = await getDoc(docRef)
+        if (snap.exists()) {
+          const data = snap.data()
+          return {
+            letterId: snap.id,
+            letterNumber: data.letterNumber || `DRAFT-${snap.id.slice(0, 5)}`,
+            templateType: data.templateType || 'Surat',
+            contentData: data.contentData || {},
+            status: data.status || 'Draft',
+            drafterId: data.drafterId || '',
+            drafterName: data.drafterName || 'Drafter',
+            approvalFlow: data.approvalFlow || [],
+            finalPdfUrl: data.finalPdfUrl,
+            createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || new Date().toISOString(),
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal membaca dokumen letter dari Firestore:', err)
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    const item = this.inMemoryLetters.find((l) => l.letterId === id)
+    return item ? { ...item } : null
+  }
+
+  async update(id: string, partial: Partial<Letter>): Promise<Letter> {
+    if (isFirebaseConfigured) {
+      try {
+        const docRef = doc(db, 'letters', id)
+        await updateDoc(docRef, {
+          ...partial,
+          updatedAt: new Date().toISOString(),
+        })
+        const updatedDoc = await this.findById(id)
+        if (updatedDoc) return updatedDoc
+      } catch (err) {
+        console.warn('Gagal update dokumen di Firestore:', err)
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    const index = this.inMemoryLetters.findIndex((l) => l.letterId === id)
     if (index === -1) {
       throw new Error(`Surat dengan id ${id} tidak ditemukan`)
     }
     const updated = {
-      ...this.letters[index],
+      ...this.inMemoryLetters[index],
       ...partial,
       updatedAt: new Date().toISOString(),
     }
-    this.letters[index] = updated
+    this.inMemoryLetters[index] = updated
     return updated
   }
 
@@ -167,6 +264,58 @@ class LetterRepository implements ILetterRepository {
       currentSequence: nextSeq,
     }
     return nextSeq
+  }
+
+  async getApprovalCandidates(): Promise<{ reviewers: ApproverOption[]; approvers: ApproverOption[] }> {
+    if (isFirebaseConfigured) {
+      try {
+        const usersSnap = await getDocs(collection(db, 'users'))
+        if (!usersSnap.empty) {
+          const reviewers: ApproverOption[] = []
+          const approvers: ApproverOption[] = []
+
+          usersSnap.forEach((d) => {
+            const data = d.data()
+            const candidate: ApproverOption = {
+              uid: d.id,
+              name: data.name || data.email || 'Pengguna',
+              role: data.role || 'reviewer',
+              department: data.department || 'HR',
+            }
+
+            if (data.role === 'reviewer') {
+              reviewers.push(candidate)
+            } else if (data.role === 'approver') {
+              approvers.push(candidate)
+            } else if (data.role === 'admin') {
+              reviewers.push(candidate)
+              approvers.push(candidate)
+            }
+          })
+
+          if (approvers.length > 0) {
+            return {
+              reviewers: reviewers.length > 0 ? reviewers : [{ uid: 'usr_rev_fallback', name: 'Siti Reviewer (HR)', role: 'reviewer' }],
+              approvers,
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal membaca users kandidat dari Firestore:', err)
+      }
+    }
+
+    // Default options for demonstration and test
+    return {
+      reviewers: [
+        { uid: 'usr_002', name: 'Siti Reviewer (HR Quality & Compliance)', role: 'reviewer', department: 'HR' },
+        { uid: 'usr_005', name: 'Dewi Reviewer (Legal Compliance)', role: 'reviewer', department: 'Legal' },
+      ],
+      approvers: [
+        { uid: 'usr_003', name: 'Hendra Approver (Head of HR)', role: 'approver', department: 'HR' },
+        { uid: 'usr_006', name: 'Bambang Approver (VP People Ops)', role: 'approver', department: 'HR' },
+      ],
+    }
   }
 }
 
