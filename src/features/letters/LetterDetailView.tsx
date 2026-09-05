@@ -1,7 +1,19 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, X, FileText, CheckCircle2, Clock, AlertOctagon } from 'lucide-react'
-import { useLetterDetailController } from './letter.controller'
+import {
+  ArrowLeft,
+  Check,
+  X,
+  FileText,
+  CheckCircle2,
+  Clock,
+  AlertOctagon,
+  Download,
+  User,
+  ShieldCheck,
+  Hash,
+} from 'lucide-react'
+import { useLetterDetailController } from './letter-detail.controller'
 import { useAuthController } from '@/features/auth/auth.controller'
 import { Badge } from '@/components/common/Badge'
 
@@ -9,93 +21,158 @@ export const LetterDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuthController()
-  const { letter, loading, actionLoading, error, handleAction } = useLetterDetailController(id)
+  const {
+    letter,
+    loading,
+    actionLoading,
+    error,
+    feedbackMsg,
+    clearFeedback,
+    handleAction,
+  } = useLetterDetailController(id)
+
   const [notes, setNotes] = useState('')
-  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
 
   if (loading) {
-    return <div className="p-12 text-center text-slate-500">Memuat pratinjau surat...</div>
+    return (
+      <div className="p-16 text-center space-y-3">
+        <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-slate-500 text-sm font-medium">Memuat pratinjau dan riwayat surat...</p>
+      </div>
+    )
   }
 
   if (!letter) {
     return (
-      <div className="p-12 text-center">
-        <p className="text-slate-800 font-bold">Surat tidak ditemukan</p>
+      <div className="max-w-md mx-auto my-12 bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm space-y-4">
+        <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
+          <FileText className="w-6 h-6" />
+        </div>
+        <h2 className="text-lg font-bold text-slate-900">Dokumen Tidak Ditemukan</h2>
+        <p className="text-xs text-slate-500">
+          Surat dengan ID yang Anda tuju tidak tersedia atau telah dihapus.
+        </p>
         <button
           type="button"
           onClick={() => navigate('/dashboard')}
-          className="mt-4 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition"
         >
-          Kembali ke Dashboard
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Kembali ke Dashboard</span>
         </button>
       </div>
     )
   }
 
-  // Check if current user is an assigned reviewer/approver with pending status
-  const pendingStep = letter.approvalFlow.find(
-    (step) => step.status === 'pending'
+  // Cari langkah pending pertama dalam alur persetujuan
+  const pendingStepIndex = letter.approvalFlow.findIndex((step) => step.status === 'pending')
+  const pendingStep = pendingStepIndex !== -1 ? letter.approvalFlow[pendingStepIndex] : null
+
+  // Pastikan langkah sebelum giliran saat ini sudah approved
+  const arePreviousStepsApproved =
+    pendingStepIndex === 0 ||
+    (pendingStepIndex > 0 &&
+      letter.approvalFlow.slice(0, pendingStepIndex).every((step) => step.status === 'approved'))
+
+  // Giliran user saat ini jika status In Review, giliran pertama yang pending, dan user cocok (atau admin)
+  const isMyTurn = Boolean(
+    user &&
+      pendingStep &&
+      arePreviousStepsApproved &&
+      (letter.status === 'In Review' || letter.status === 'Draft') &&
+      (user.uid === pendingStep.userId ||
+        user.role === 'admin' ||
+        user.role === pendingStep.role)
   )
-  const isMyTurn = user && pendingStep && (user.role === 'admin' || user.role === pendingStep.role)
 
   const onApprove = async () => {
-    if (!user) return
-    const targetUserId = pendingStep ? pendingStep.userId : user.uid
-    const ok = await handleAction(targetUserId, 'approve', notes)
-    if (ok) {
-      setFeedbackMsg('Dokumen berhasil disetujui.')
+    if (!user || !pendingStep) return
+    const targetUserId = user.role === 'admin' ? pendingStep.userId : user.uid
+    const success = await handleAction(targetUserId, 'approve', notes)
+    if (success) {
       setNotes('')
     }
   }
 
   const onReject = async () => {
-    if (!user) return
-    const targetUserId = pendingStep ? pendingStep.userId : user.uid
-    const ok = await handleAction(targetUserId, 'reject', notes)
-    if (ok) {
-      setFeedbackMsg('Dokumen ditolak dengan catatan.')
+    if (!user || !pendingStep) return
+    const targetUserId = user.role === 'admin' ? pendingStep.userId : user.uid
+    const success = await handleAction(targetUserId, 'reject', notes)
+    if (success) {
       setNotes('')
     }
   }
 
+  const isStandalone =
+    letter.status === 'Booked' ||
+    letter.contentData?.isStandaloneBooking === 'true'
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+      {/* Navigation & Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button
           type="button"
           onClick={() => navigate('/dashboard')}
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Kembali ke Riwayat Surat</span>
         </button>
-        <Badge status={letter.status} />
+
+        <div className="flex items-center gap-3">
+          <Badge status={letter.status} />
+          {letter.finalPdfUrl && (
+            <a
+              href={letter.finalPdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200 transition"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Unduh PDF</span>
+            </a>
+          )}
+        </div>
       </div>
 
+      {/* Success Notification Alert */}
       {feedbackMsg && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center justify-between">
-          <span>{feedbackMsg}</span>
-          <button type="button" onClick={() => setFeedbackMsg(null)} className="text-emerald-800 font-bold">
-            ×
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span className="font-medium">{feedbackMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={clearFeedback}
+            className="text-emerald-700 hover:text-emerald-900 font-bold p-1 rounded-lg"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
+      {/* Error Alert */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
-          {error}
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center gap-3 shadow-xs">
+          <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Document Preview (2 Cols) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
-          <div className="border-b border-slate-200 pb-4 text-center">
-            <h2 className="text-lg font-bold text-slate-900 uppercase tracking-wide">
+        {/* Left Column: Read-Only Document Paper Preview */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+          {/* Header Surat */}
+          <div className="border-b border-slate-200 pb-5 text-center space-y-1">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2">
+              <FileText className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 uppercase tracking-wide">
               {letter.templateType}
             </h2>
-            <p className="text-sm font-semibold text-indigo-600 mt-0.5">
+            <p className="text-sm font-mono font-bold text-indigo-600">
               Nomor: {letter.letterNumber}
             </p>
             {letter.contentData.jenisSurat && (
@@ -105,96 +182,199 @@ export const LetterDetailView: React.FC = () => {
             )}
           </div>
 
-          <div className="space-y-4 text-sm text-slate-700 leading-relaxed min-h-[280px] bg-slate-50/70 p-6 rounded-xl border border-slate-200">
-            <p className="font-semibold text-slate-800">Yang bertanda tangan di bawah ini menerangkan bahwa:</p>
-            <div className="grid grid-cols-3 gap-2 pl-2">
-              <span className="text-slate-500">Nama</span>
-              <span className="col-span-2 font-medium text-slate-900">: {String(letter.contentData.recipientName || '-')}</span>
+          {/* Standalone Booking Display */}
+          {isStandalone ? (
+            <div className="space-y-4 bg-slate-50/80 p-6 rounded-xl border border-slate-200 text-sm text-slate-700">
+              <div className="flex items-center gap-2 text-blue-700 font-semibold text-xs uppercase tracking-wider">
+                <Hash className="w-4 h-4" />
+                <span>Nomor Surat Standalone (Eksternal)</span>
+              </div>
+              <p className="text-slate-600">
+                Nomor surat ini di-booking langsung tanpa dokumen draf internal untuk keperluan eksternal / offline.
+              </p>
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200">
+                <span className="text-slate-500">Keperluan</span>
+                <span className="col-span-2 font-medium text-slate-900">
+                  : {String(letter.contentData.purpose || '-')}
+                </span>
 
-              <span className="text-slate-500">NIK</span>
-              <span className="col-span-2 font-medium text-slate-900">: {String(letter.contentData.recipientNik || '-')}</span>
+                <span className="text-slate-500">Tanggal Terbit</span>
+                <span className="col-span-2 font-medium text-slate-900">
+                  : {String(letter.contentData.issuedDate || new Date(letter.createdAt).toLocaleDateString('id-ID'))}
+                </span>
 
-              {letter.contentData.destination && (
-                <>
-                  <span className="text-slate-500">Tujuan Penugasan</span>
-                  <span className="col-span-2 font-medium text-slate-900">: {String(letter.contentData.destination)}</span>
-                </>
-              )}
-
-              {letter.contentData.purpose && (
-                <>
-                  <span className="text-slate-500">Agenda / Keperluan</span>
-                  <span className="col-span-2 font-medium text-slate-900">: {String(letter.contentData.purpose)}</span>
-                </>
-              )}
-
-              {letter.contentData.violation && (
-                <>
-                  <span className="text-slate-500">Uraian Pelanggaran</span>
-                  <span className="col-span-2 font-medium text-slate-900">: {String(letter.contentData.violation)}</span>
-                </>
-              )}
-
-              {letter.contentData.position && (
-                <>
-                  <span className="text-slate-500">Jabatan</span>
-                  <span className="col-span-2 font-medium text-slate-900">: {String(letter.contentData.position)}</span>
-                </>
-              )}
+                <span className="text-slate-500">Pemohon</span>
+                <span className="col-span-2 font-medium text-slate-900">
+                  : {letter.drafterName}
+                </span>
+              </div>
             </div>
+          ) : (
+            /* Standard Letter Body */
+            <div className="space-y-4 text-sm text-slate-700 leading-relaxed bg-slate-50/70 p-6 rounded-xl border border-slate-200">
+              <p className="font-semibold text-slate-800">
+                Yang bertanda tangan di bawah ini menerangkan bahwa:
+              </p>
 
-            <p className="pt-4">
-              Demikian surat resmi ini diterbitkan untuk dipergunakan sebagaimana mestinya dengan penuh tanggung jawab.
-            </p>
+              <div className="grid grid-cols-3 gap-2.5 pl-2">
+                <span className="text-slate-500">Nama Lengkap</span>
+                <span className="col-span-2 font-medium text-slate-900">
+                  : {String(letter.contentData.recipientName || '-')}
+                </span>
 
-            <div className="pt-8 flex justify-between items-end text-xs text-slate-500">
-              <div>
-                <p>Dibuat oleh: <span className="font-semibold text-slate-800">{letter.drafterName}</span></p>
-                <p>Tanggal: {new Date(letter.createdAt).toLocaleDateString('id-ID')}</p>
+                <span className="text-slate-500">NIK Karyawan</span>
+                <span className="col-span-2 font-medium text-slate-900">
+                  : {String(letter.contentData.recipientNik || '-')}
+                </span>
+
+                {letter.contentData.position && (
+                  <>
+                    <span className="text-slate-500">Jabatan</span>
+                    <span className="col-span-2 font-medium text-slate-900">
+                      : {String(letter.contentData.position)}
+                    </span>
+                  </>
+                )}
+
+                {letter.contentData.destination && (
+                  <>
+                    <span className="text-slate-500">Kota / Tujuan</span>
+                    <span className="col-span-2 font-medium text-slate-900">
+                      : {String(letter.contentData.destination)}
+                    </span>
+                  </>
+                )}
+
+                {letter.contentData.purpose && (
+                  <>
+                    <span className="text-slate-500">Keperluan / Agenda</span>
+                    <span className="col-span-2 font-medium text-slate-900">
+                      : {String(letter.contentData.purpose)}
+                    </span>
+                  </>
+                )}
+
+                {letter.contentData.startDate && (
+                  <>
+                    <span className="text-slate-500">Masa Berlaku</span>
+                    <span className="col-span-2 font-medium text-slate-900">
+                      : {String(letter.contentData.startDate)} s.d. {String(letter.contentData.endDate || '-')}
+                    </span>
+                  </>
+                )}
+
+                {letter.contentData.violationReason && (
+                  <>
+                    <span className="text-slate-500">Uraian Pelanggaran</span>
+                    <span className="col-span-2 font-medium text-slate-900">
+                      : {String(letter.contentData.violationReason)}
+                    </span>
+                  </>
+                )}
+
+                {letter.contentData.violationDate && (
+                  <>
+                    <span className="text-slate-500">Tgl Pelanggaran</span>
+                    <span className="col-span-2 font-medium text-slate-900">
+                      : {String(letter.contentData.violationDate)}
+                    </span>
+                  </>
+                )}
+
+                {letter.contentData.effectiveDate && (
+                  <>
+                    <span className="text-slate-500">Tgl Berlaku Sanksi</span>
+                    <span className="col-span-2 font-medium text-slate-900">
+                      : {String(letter.contentData.effectiveDate)}
+                    </span>
+                  </>
+                )}
               </div>
 
-              {letter.status === 'Approved' && (
-                <div className="text-right">
-                  <div className="inline-block border border-emerald-500 text-emerald-600 font-bold px-3 py-1 rounded tracking-wider uppercase text-[10px]">
-                    Verified E-Signature
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-400">Otorisasi Selesai</p>
+              <p className="pt-4 text-xs text-slate-600 italic">
+                Demikian surat keterangan resmi ini dibuat dengan sebenar-benarnya untuk dipergunakan sebagaimana mestinya dengan penuh tanggung jawab.
+              </p>
+
+              {/* Bottom Paper Signature Footer */}
+              <div className="pt-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 text-xs text-slate-500 border-t border-slate-200 mt-6">
+                <div>
+                  <p>
+                    Drafter: <strong className="text-slate-800">{letter.drafterName}</strong>
+                  </p>
+                  <p>
+                    Tanggal Diajukan:{' '}
+                    {new Date(letter.createdAt).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </p>
                 </div>
-              )}
+
+                {letter.status === 'Approved' ? (
+                  <div className="text-left sm:text-right">
+                    <div className="inline-flex items-center gap-1.5 border border-emerald-500 bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-lg tracking-wider uppercase text-[10px]">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Verified Digital Signature</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">Persetujuan Lengkap & Sah</p>
+                  </div>
+                ) : letter.status === 'Rejected' ? (
+                  <div className="text-left sm:text-right">
+                    <div className="inline-flex items-center gap-1.5 border border-rose-300 bg-rose-50 text-rose-700 font-bold px-3 py-1 rounded-lg tracking-wider uppercase text-[10px]">
+                      <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Dokumen Ditolak</span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Sidebar Info & Action Panel (1 Col) */}
+        {/* Right Column: Timeline & Decision Action Panel */}
         <div className="space-y-6">
-          {/* Approval Timeline Panel */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-              Jejak Alur Persetujuan
-            </h3>
+          {/* Approval Timeline Component */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span>Jejak Alur Persetujuan</span>
+              </h3>
+              <span className="text-[11px] text-slate-400 font-medium">
+                {letter.approvalFlow.length} Tahap
+              </span>
+            </div>
 
             <div className="space-y-4">
-              {/* Drafter */}
+              {/* Step 0: Drafter */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                  <FileText className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
+                  <User className="w-4 h-4" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-slate-900">{letter.drafterName}</p>
                   <p className="text-[11px] text-slate-500">Drafter • Dokumen Dibuat</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {new Date(letter.createdAt).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </p>
                 </div>
               </div>
 
-              {/* Reviewer / Approver steps */}
+              {/* Reviewer / Approver Steps */}
               {letter.approvalFlow.map((step, idx) => (
-                <div key={idx} className="flex items-start gap-3">
+                <div key={idx} className="flex items-start gap-3 relative">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
                       step.status === 'approved'
-                        ? 'bg-emerald-50 text-emerald-600'
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
                         : step.status === 'rejected'
-                        ? 'bg-rose-50 text-rose-600'
-                        : 'bg-amber-50 text-amber-600'
+                        ? 'bg-rose-50 text-rose-600 border-rose-200'
+                        : 'bg-amber-50 text-amber-600 border-amber-200'
                     }`}
                   >
                     {step.status === 'approved' ? (
@@ -205,15 +385,39 @@ export const LetterDetailView: React.FC = () => {
                       <Clock className="w-4 h-4" />
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900">{step.userName}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">{step.userName}</p>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                          step.status === 'approved'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : step.status === 'rejected'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {step.status}
+                      </span>
+                    </div>
                     <p className="text-[11px] text-slate-500 capitalize">
-                      {step.role} • <span className="font-semibold">{step.status}</span>
+                      {step.role === 'reviewer' ? 'Reviewer (Pemeriksa)' : 'Approver Final'}
                     </p>
-                    {step.notes && (
-                      <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-200 mt-1 italic">
-                        "{step.notes}"
+                    {step.signedAt && (
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {new Date(step.signedAt).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </p>
+                    )}
+                    {step.notes && (
+                      <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 mt-1.5 italic">
+                        "{step.notes}"
+                      </div>
                     )}
                   </div>
                 </div>
@@ -221,45 +425,65 @@ export const LetterDetailView: React.FC = () => {
             </div>
           </div>
 
-          {/* Action Panel (For Reviewers / Approvers) */}
+          {/* Action Decision Panel */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Panel Keputusan Otorisasi
             </h3>
 
             {letter.status === 'Approved' ? (
-              <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800 text-xs font-medium text-center">
-                Dokumen telah selesai diotorisasi secara sah.
+              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800 text-xs font-medium space-y-1">
+                <p className="font-bold">Otorisasi Selesai</p>
+                <p className="text-emerald-700">
+                  Seluruh tahapan persetujuan telah dipenuhi. Dokumen ini sah secara digital.
+                </p>
               </div>
             ) : letter.status === 'Rejected' ? (
-              <div className="p-3.5 bg-rose-50 rounded-xl border border-rose-200 text-rose-800 text-xs font-medium text-center">
-                Dokumen ini telah ditolak.
+              <div className="p-4 bg-rose-50 rounded-xl border border-rose-200 text-rose-800 text-xs font-medium space-y-1">
+                <p className="font-bold">Dokumen Ditolak</p>
+                <p className="text-rose-700">
+                  Proses alur persetujuan dihentikan karena dokumen dinyatakan tidak lolos evaluasi.
+                </p>
+              </div>
+            ) : letter.status === 'Booked' ? (
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-blue-800 text-xs font-medium space-y-1">
+                <p className="font-bold">Nomor Surat Ter-booking</p>
+                <p className="text-blue-700">
+                  Nomor surat ini dicatat mandiri dan tidak memerlukan proses review/approve.
+                </p>
               </div>
             ) : isMyTurn ? (
-              <div className="space-y-3">
-                <p className="text-xs text-slate-600">
-                  Giliran Anda untuk meninjau/menyetujui dokumen ini sebagai <span className="font-bold text-indigo-600 capitalize">{pendingStep?.role}</span>.
-                </p>
+              <div className="space-y-4">
+                <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                  Giliran Anda untuk memberikan keputusan otorisasi sebagai{' '}
+                  <strong className="capitalize text-amber-950">{pendingStep?.role}</strong>.
+                </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Catatan Revisi / Review</label>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Catatan Revisi / Evaluasi (Opsional)
+                  </label>
                   <textarea
-                    rows={2}
-                    placeholder="Tuliskan catatan jika ada hal yang perlu direvisi..."
+                    rows={3}
+                    placeholder="Tuliskan catatan arahan revisi atau evaluasi (disarankan saat menolak)..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition resize-none placeholder:text-slate-400"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
                   <button
                     type="button"
                     disabled={actionLoading}
                     onClick={onReject}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 transition disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 transition disabled:opacity-50"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    {actionLoading ? (
+                      <div className="w-3.5 h-3.5 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <X className="w-4 h-4" />
+                    )}
                     <span>Reject</span>
                   </button>
 
@@ -267,16 +491,26 @@ export const LetterDetailView: React.FC = () => {
                     type="button"
                     disabled={actionLoading}
                     onClick={onApprove}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    {actionLoading ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
                     <span>Approve</span>
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs text-center">
-                Menunggu giliran peninjauan oleh <span className="font-semibold text-slate-700">{pendingStep?.userName}</span> ({pendingStep?.role}).
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs text-center space-y-1">
+                <Clock className="w-5 h-5 text-slate-400 mx-auto" />
+                <p className="font-semibold text-slate-700">Menunggu Peninjauan</p>
+                <p className="text-[11px] text-slate-400">
+                  Saat ini giliran{' '}
+                  <strong className="text-slate-600">{pendingStep?.userName}</strong> (
+                  {pendingStep?.role}).
+                </p>
               </div>
             )}
           </div>

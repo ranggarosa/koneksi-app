@@ -2,6 +2,8 @@ import type { ILetterRepository } from './letter.repository'
 import { letterRepository } from './letter.repository'
 import type { ICounterRepository } from './counter.repository'
 import { counterRepository } from './counter.repository'
+import type { IEmailNotificationService } from './email-notification.service'
+import { emailNotificationService } from './email-notification.service'
 import type { Letter, LetterStatus, CreateLetterDTO, ApproverOption, BookLetterNumberDTO } from './letter.model'
 import { LETTER_TEMPLATES } from './letter.model'
 
@@ -10,7 +12,8 @@ const ROMAN_MONTHS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X
 export class LetterService {
   constructor(
     private readonly repo: ILetterRepository,
-    private readonly counterRepo: ICounterRepository = counterRepository
+    private readonly counterRepo: ICounterRepository = counterRepository,
+    private readonly notificationService: IEmailNotificationService = emailNotificationService
   ) {}
 
   async getAllLetters(): Promise<Letter[]> {
@@ -152,7 +155,19 @@ export class LetterService {
       updatedAt: nowIso,
     }
 
-    return this.repo.create(newLetterData)
+    const createdLetter = await this.repo.create(newLetterData)
+
+    // Trigger notifikasi email ke pihak pertama di alur persetujuan
+    if (createdLetter.approvalFlow.length > 0) {
+      const firstPerson = createdLetter.approvalFlow[0]
+      await this.notificationService.notifyNextApprover(
+        { name: firstPerson.userName, role: firstPerson.role },
+        createdLetter.letterNumber,
+        createdLetter.templateType
+      )
+    }
+
+    return createdLetter
   }
 
   async processApproval(
@@ -166,26 +181,67 @@ export class LetterService {
       throw new Error('Surat tidak ditemukan')
     }
 
-    const flow = [...letter.approvalFlow]
-    const stepIndex = flow.findIndex((step) => step.userId === reviewerOrApproverId && step.status === 'pending')
-
-    if (stepIndex === -1) {
-      throw new Error('Pengguna tidak memiliki antrean persetujuan pada dokumen ini')
+    if (letter.status !== 'In Review' && letter.status !== 'Draft') {
+      throw new Error(`Surat tidak dapat diproses karena statusnya sudah "${letter.status}"`)
     }
 
-    flow[stepIndex] = {
-      ...flow[stepIndex],
+    const flow = [...letter.approvalFlow]
+    const pendingStepIndex = flow.findIndex((step) => step.status === 'pending')
+
+    if (pendingStepIndex === -1) {
+      throw new Error('Tidak ada antrean persetujuan yang menunggu pada dokumen ini')
+    }
+
+    const currentPendingStep = flow[pendingStepIndex]
+
+    // Validasi giliran persetujuan: Pengguna yang memproses harus pemilik giliran saat ini atau admin
+    if (
+      currentPendingStep.userId !== reviewerOrApproverId &&
+      reviewerOrApproverId !== 'admin' &&
+      !reviewerOrApproverId.includes(currentPendingStep.role)
+    ) {
+      throw new Error(
+        `Bukan giliran Anda untuk memproses dokumen ini. Saat ini menunggu persetujuan dari ${currentPendingStep.userName} (${currentPendingStep.role})`
+      )
+    }
+
+    flow[pendingStepIndex] = {
+      ...currentPendingStep,
       status: action === 'approve' ? 'approved' : 'rejected',
-      notes: notes || undefined,
+      notes: notes?.trim() || undefined,
       signedAt: action === 'approve' ? new Date().toISOString() : undefined,
     }
 
     let nextStatus: LetterStatus = letter.status
     if (action === 'reject') {
       nextStatus = 'Rejected'
+      // Notifikasi penolakan ke Drafter
+      await this.notificationService.notifyLetterRejected(
+        { name: letter.drafterName },
+        letter.letterNumber,
+        currentPendingStep.userName,
+        notes
+      )
     } else {
-      const allApproved = flow.every((step) => step.status === 'approved')
-      nextStatus = allApproved ? 'Approved' : 'In Review'
+      const nextPendingIndex = flow.findIndex((step) => step.status === 'pending')
+      if (nextPendingIndex !== -1) {
+        nextStatus = 'In Review'
+        const nextPerson = flow[nextPendingIndex]
+        // Notifikasi ke approver berikutnya dalam antrean
+        await this.notificationService.notifyNextApprover(
+          { name: nextPerson.userName, role: nextPerson.role },
+          letter.letterNumber,
+          letter.templateType
+        )
+      } else {
+        nextStatus = 'Approved'
+        // Notifikasi kelulusan otorisasi ke Drafter
+        await this.notificationService.notifyApprovalComplete(
+          { name: letter.drafterName },
+          letter.letterNumber,
+          letter.templateType
+        )
+      }
     }
 
     return this.repo.update(letterId, {
