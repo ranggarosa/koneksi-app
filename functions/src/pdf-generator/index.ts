@@ -337,15 +337,15 @@ export async function generatePdfFromGoogleDoc(options: GeneratePdfOptions): Pro
   } catch (error: any) {
     logger.error(`Error processing PDF for letter ${letterId}:`, error)
 
-    // Update status surat di Firestore ke Error_PDF agar UI menampilkan pesan error & opsi coba lagi
+    // Update status surat di Firestore ke Error PDF agar UI menampilkan pesan error & opsi coba lagi
     try {
       await db.collection('letters').doc(letterId).update({
-        status: 'Error_PDF',
+        status: 'Error PDF',
         pdfError: error?.message || 'Gagal merender PDF via Google Workspace APIs',
         updatedAt: new Date().toISOString(),
       })
     } catch (dbErr) {
-      logger.error(`Failed to update letter ${letterId} to Error_PDF:`, dbErr)
+      logger.error(`Failed to update letter ${letterId} to Error PDF:`, dbErr)
     }
 
     throw error

@@ -1,8 +1,13 @@
+import * as path from 'path'
+import * as dotenv from 'dotenv'
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore'
 import * as logger from 'firebase-functions/logger'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { generatePdfFromGoogleDoc } from './pdf-generator'
+
+// Muat variabel lingkungan dari root .env jika ada (terutama untuk development / emulator lokal)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 if (getApps().length === 0) {
   initializeApp()
@@ -33,7 +38,7 @@ export const onLetterApproved = onDocumentUpdated('letters/{letterId}', async (e
       const errorMsg = `Surat ${letterId} tidak memiliki googleDocTemplateId yang valid`
       logger.error(errorMsg)
       await db.collection('letters').doc(letterId).update({
-        status: 'Error_PDF',
+        status: 'Error PDF',
         pdfError: errorMsg,
         updatedAt: new Date().toISOString(),
       })

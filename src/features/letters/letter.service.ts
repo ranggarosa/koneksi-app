@@ -313,8 +313,8 @@ export class LetterService {
       throw new Error('Surat tidak ditemukan')
     }
 
-    if (letter.status !== 'Error_PDF') {
-      throw new Error(`Hanya surat dengan status Error_PDF yang dapat diproses ulang (status saat ini: ${letter.status})`)
+    if (letter.status !== 'Error PDF') {
+      throw new Error(`Hanya surat dengan status Error PDF yang dapat diproses ulang (status saat ini: ${letter.status})`)
     }
 
     return this.repo.update(letterId, {
@@ -333,7 +333,7 @@ export class LetterService {
       rejectedCount: letters.filter((l) => l.status === 'Rejected').length,
       bookedCount: letters.filter((l) => l.status === 'Booked').length,
       processingPdfCount: letters.filter((l) => l.status === 'Processing PDF').length,
-      errorPdfCount: letters.filter((l) => l.status === 'Error_PDF').length,
+      errorPdfCount: letters.filter((l) => l.status === 'Error PDF').length,
     }
   }
 }

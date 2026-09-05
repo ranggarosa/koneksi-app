@@ -1,4 +1,4 @@
-export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected' | 'Booked' | 'Canceled' | 'Processing PDF' | 'Error_PDF'
+export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected' | 'Booked' | 'Canceled' | 'Processing PDF' | 'Error PDF'
 
 export type LetterTemplateType = 'Surat Tugas' | 'SP 1' | 'SP 2'
 

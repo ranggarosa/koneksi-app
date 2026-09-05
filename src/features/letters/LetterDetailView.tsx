@@ -329,7 +329,7 @@ export const LetterDetailView: React.FC = () => {
                     </div>
                     <p className="mt-1 text-[11px] text-slate-400">Google Docs API Generating...</p>
                   </div>
-                ) : letter.status === 'Error_PDF' ? (
+                ) : letter.status === 'Error PDF' ? (
                   <div className="text-left sm:text-right">
                     <div className="inline-flex items-center gap-1.5 border border-rose-300 bg-rose-50 text-rose-700 font-bold px-3 py-1 rounded-lg tracking-wider uppercase text-[10px]">
                       <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
@@ -470,7 +470,7 @@ export const LetterDetailView: React.FC = () => {
                   <span>Menunggu proses render asinkron</span>
                 </div>
               </div>
-            ) : letter.status === 'Error_PDF' ? (
+            ) : letter.status === 'Error PDF' ? (
               <div className="p-5 bg-rose-50/90 rounded-2xl border border-rose-200 space-y-3 animate-in fade-in duration-300">
                 <div className="flex items-start gap-3">
                   <AlertOctagon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
