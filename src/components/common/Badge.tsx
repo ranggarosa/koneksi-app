@@ -56,6 +56,15 @@ export const Badge: React.FC<BadgeProps> = ({ status }) => {
     )
   }
 
+  if (normalized === 'processing pdf') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping" />
+        Processing PDF
+      </span>
+    )
+  }
+
   return (
     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
       {status}

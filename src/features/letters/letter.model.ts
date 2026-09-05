@@ -1,4 +1,4 @@
-export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected' | 'Booked' | 'Canceled'
+export type LetterStatus = 'Draft' | 'In Review' | 'Approved' | 'Rejected' | 'Booked' | 'Canceled' | 'Processing PDF'
 
 export type LetterTemplateType = 'Surat Tugas' | 'SP 1' | 'SP 2'
 
@@ -6,12 +6,28 @@ export interface LetterTemplateConfig {
   type: string
   code: string // KODE_SURAT (misal: ST, SP1, SP2)
   label: string
+  googleDocTemplateId?: string
 }
 
 export const LETTER_TEMPLATES: Record<string, LetterTemplateConfig> = {
-  'Surat Tugas': { type: 'Surat Tugas', code: 'ST', label: 'Surat Tugas' },
-  'SP 1': { type: 'SP 1', code: 'SP1', label: 'Surat Peringatan 1 (SP 1)' },
-  'SP 2': { type: 'SP 2', code: 'SP2', label: 'Surat Peringatan 2 (SP 2)' },
+  'Surat Tugas': {
+    type: 'Surat Tugas',
+    code: 'ST',
+    label: 'Surat Tugas',
+    googleDocTemplateId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+  },
+  'SP 1': {
+    type: 'SP 1',
+    code: 'SP1',
+    label: 'Surat Peringatan 1 (SP 1)',
+    googleDocTemplateId: '1z7sXqY6tBkWXU4P2R_vD2WfK1M9V8nLx5jZ8gQ9_abc',
+  },
+  'SP 2': {
+    type: 'SP 2',
+    code: 'SP2',
+    label: 'Surat Peringatan 2 (SP 2)',
+    googleDocTemplateId: '1k8mNpQ3rTuVwXyZ5A6B7C8D9E0F1G2H3I4J5K6L_xyz',
+  },
 }
 
 export interface ApprovalStep {
@@ -27,6 +43,7 @@ export interface Letter {
   letterId: string
   letterNumber: string
   templateType: string
+  googleDocTemplateId?: string
   contentData: Record<string, string | number>
   status: LetterStatus
   drafterId: string
@@ -57,6 +74,7 @@ export interface CreateLetterDTO {
   templateType: string
   department?: string
   jenisSurat?: string
+  googleDocTemplateId?: string
   contentData: Record<string, string | number>
   reviewerId?: string
   approverId: string
