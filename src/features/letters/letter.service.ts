@@ -1,11 +1,17 @@
 import type { ILetterRepository } from './letter.repository'
 import { letterRepository } from './letter.repository'
+import type { ICounterRepository } from './counter.repository'
+import { counterRepository } from './counter.repository'
 import type { Letter, LetterStatus, CreateLetterDTO, ApproverOption } from './letter.model'
+import { LETTER_TEMPLATES } from './letter.model'
 
 const ROMAN_MONTHS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
 export class LetterService {
-  constructor(private readonly repo: ILetterRepository) {}
+  constructor(
+    private readonly repo: ILetterRepository,
+    private readonly counterRepo: ICounterRepository = counterRepository
+  ) {}
 
   async getAllLetters(): Promise<Letter[]> {
     return this.repo.findAll()
@@ -19,11 +25,15 @@ export class LetterService {
     return this.repo.getApprovalCandidates()
   }
 
-  formatLetterNumber(sequence: number, categoryCode: string, department: string, date: Date = new Date()): string {
+  /**
+   * Format penomoran surat resmi: [NOMOR_URUT].[KODE_SURAT]/[BULAN_ROMAWI]/[TAHUN]
+   * Contoh: 0051.SP1/IX/2026, 0001.ST/IX/2026
+   */
+  formatLetterNumber(sequence: number, letterCode: string, date: Date = new Date()): string {
     const seqStr = String(sequence).padStart(4, '0')
     const romanMonth = ROMAN_MONTHS[date.getMonth()]
     const year = date.getFullYear()
-    return `${seqStr}.${categoryCode}/${department}/${romanMonth}/${year}`
+    return `${seqStr}.${letterCode}/${romanMonth}/${year}`
   }
 
   validateLetterPayload(dto: CreateLetterDTO): void {
@@ -91,17 +101,19 @@ export class LetterService {
 
     const now = new Date()
     const nowIso = now.toISOString()
+    const month = now.getMonth() + 1
+    const year = now.getFullYear()
     const dept = 'HR'
 
-    // Format draft identifier
-    const templateCode = dto.templateType === 'Surat Tugas'
-      ? 'ST'
-      : dto.templateType === 'SP 1'
-      ? 'SP1'
-      : dto.templateType === 'SP 2'
-      ? 'SP2'
-      : 'LTR'
-    const draftNumber = `DRAFT-${templateCode}/${dept}/${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Date.now().toString().slice(-4)}`
+    // Ambil KODE_SURAT dari konfigurasi Template surat yang dipilih
+    const templateConfig = LETTER_TEMPLATES[dto.templateType]
+    const letterCode = templateConfig ? templateConfig.code : 'LTR'
+
+    // Ambil nomor urut atomic dari Firestore Transactions
+    const nextSequence = await this.counterRepo.getNextSequenceNumber(dept, month, year)
+
+    // Rangkai nomor resmi: [NOMOR_URUT].[KODE_SURAT]/[BULAN_ROMAWI]/[TAHUN]
+    const letterNumber = this.formatLetterNumber(nextSequence, letterCode, now)
 
     // Build approval flow steps
     const candidates = candidateUsers || (await this.repo.getApprovalCandidates())
@@ -126,7 +138,7 @@ export class LetterService {
     })
 
     const newLetterData: Omit<Letter, 'letterId'> = {
-      letterNumber: draftNumber,
+      letterNumber,
       templateType: dto.templateType,
       contentData: {
         ...dto.contentData,
@@ -197,4 +209,4 @@ export class LetterService {
   }
 }
 
-export const letterService = new LetterService(letterRepository)
+export const letterService = new LetterService(letterRepository, counterRepository)
