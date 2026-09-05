@@ -307,6 +307,23 @@ export class LetterService {
     return this.repo.create(bookedLetterData)
   }
 
+  async retryPdfProcessing(letterId: string): Promise<Letter> {
+    const letter = await this.repo.findById(letterId)
+    if (!letter) {
+      throw new Error('Surat tidak ditemukan')
+    }
+
+    if (letter.status !== 'Error_PDF') {
+      throw new Error(`Hanya surat dengan status Error_PDF yang dapat diproses ulang (status saat ini: ${letter.status})`)
+    }
+
+    return this.repo.update(letterId, {
+      status: 'Processing PDF',
+      pdfError: undefined,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
   calculateMetrics(letters: Letter[]) {
     return {
       total: letters.length,
@@ -316,6 +333,7 @@ export class LetterService {
       rejectedCount: letters.filter((l) => l.status === 'Rejected').length,
       bookedCount: letters.filter((l) => l.status === 'Booked').length,
       processingPdfCount: letters.filter((l) => l.status === 'Processing PDF').length,
+      errorPdfCount: letters.filter((l) => l.status === 'Error_PDF').length,
     }
   }
 }

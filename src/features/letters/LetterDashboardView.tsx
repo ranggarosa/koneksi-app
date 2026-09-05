@@ -112,7 +112,7 @@ export const LetterDashboardView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {(['All', 'Draft', 'In Review', 'Approved', 'Rejected', 'Booked', 'Canceled', 'Processing PDF'] as (LetterStatus | 'All')[]).map((status) => (
+            {(['All', 'Draft', 'In Review', 'Approved', 'Rejected', 'Booked', 'Canceled', 'Processing PDF', 'Error_PDF'] as (LetterStatus | 'All')[]).map((status) => (
               <button
                 key={status}
                 type="button"
